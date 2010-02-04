@@ -35,6 +35,8 @@ category(File) ->
         ".mkv" -> ["Video"];
         ".mp4" -> ["Audio", "Video"];
         ".jpg" -> ["Picture"];
+        ".png" -> ["Picture"];
+        
         ".app" -> ["Application"];
         _ -> ["Unknown"]
     end.
@@ -78,11 +80,11 @@ float_as_string(Float) ->
 summary(File) ->
     Es = string:tokens(File, "/"),
     
-    "Kategory: " ++ string:join(category(File), " - ") ++ "<br />\n" ++
-    "Pfad: /" ++ string:join(lists:sublist(Es, 1, length(Es)-1), "/") ++ "<br />\n" ++
     "<b>Datei</b>: " ++ lists:last(Es) ++ "<br />\n" ++
-    "Groesse: " ++ human_filesize(filelib:file_size(File)) ++ "<br />\n".
-
+    "Pfad: /" ++ string:join(lists:sublist(Es, 1, length(Es)-1), "/") ++ "<br />\n" ++
+    "Groesse: " ++ human_filesize(filelib:file_size(File)) ++ "<br />\n" ++
+    "Kategory: " ++ string:join(category(File), " - ") ++ "<br />\n".
+    
 add_file(File, Url, Atom) ->
     add_item(
         Url, % uri

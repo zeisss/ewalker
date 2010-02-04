@@ -28,7 +28,7 @@ end_walk(Root) ->
 %% ===================================================================================== %%
 
 init([Name, Links, Filename]) ->
-    io:format("writer init~n"),
+    error_logger:info_report("writer init"),
     {ok, #state{atom=atom:new(Name), files=[], links=Links, filename=Filename}}.
 
 %% ===================================================================================== %%
@@ -53,7 +53,7 @@ handle_cast({visit, Root, File}, State) ->
         _ ->
             State#state.files
     end,
-    {noreply, State#state{files=NewFiles}}.
+    {noreply, State#state{files=NewFiles}, ?TIMEOUT}.
     
 %% ===================================================================================== %%
 
@@ -64,7 +64,7 @@ handle_call(_Request, _From, State) ->
 
 handle_info(timeout, State) ->
     Atom = lists:foldl(
-        fun({RootPath, File}, Atom) ->
+        fun({_RootPath, File}, Atom) ->
             atom:add_file(
                 File,
                 replace_links(File, State#state.links),
@@ -76,10 +76,6 @@ handle_info(timeout, State) ->
     ),
     
     ok = dump(Atom, State#state.filename),
-    {noreply, State};
-    
-handle_info(Message, State) ->
-    io:format(Message),
     {noreply, State}.
     
 %% ===================================================================================== %%
@@ -94,6 +90,8 @@ code_change(_OldVsn, State, _Extra) ->
         
         
 %% ===================================================================================== %%
+% Returns false for files, that should not be saved (e.g. Thumbs.db)
+%
 accept_file(File) ->
     Eles = string:tokens(File, "/"),
             
@@ -109,9 +107,17 @@ accept_file(File) ->
         _ -> filelib:is_regular(File)
     end.
     
-replace_links(Path, []) ->
-    
+%%
+% Returns a URI version of the given path
+%
+% replace_links(Path, Mappings) -> Url
+% Path = Url = string()
+% Mappings = [{Url, Path}]
+%
+%
+replace_links(Path, _Mappings = []) ->
     Path;
+    
 replace_links(Path, [{Url, Folder}|Mappings]) ->
     PathPrefix = string:left(Path, length(Folder)),
     
@@ -123,6 +129,9 @@ replace_links(Path, [{Url, Folder}|Mappings]) ->
     end.
     
     
+%%
+% Writes the given Atom object to the given file.
+% 
 dump(Atom, Filename) ->
     {ok, Content} = atom:dump(Atom),
     
@@ -130,5 +139,5 @@ dump(Atom, Filename) ->
     file:write(Fp, Content),
     file:close(Fp),
     
-    io:format("ATOM file written.~n"),
+    error_logger:info_report("ATOM file written."),
     ok.

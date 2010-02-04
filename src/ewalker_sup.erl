@@ -32,7 +32,7 @@ start_link(Args) ->
 %
 % Args must be list of paths to visit
 init(Args) ->
-    io:format("ENV: ~w~n", [application:get_all_env(ewalker)]),
+    error_logger:info_report(application:get_all_env(ewalker)),
     
     {ok, Mappings} = application:get_env(ewalker, mapping),
     
