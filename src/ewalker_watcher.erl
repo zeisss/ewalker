@@ -1,7 +1,12 @@
+%%
+%% The watcher is gen_server opening a port to get notified about filesystem events.
+%% If such an event occure, or a ?timeout happens, the filesystem is walked and
+%% all found files are sent to the ewalker_writer. 
+%%
 -module(ewalker_watcher).
 
 -behaviour(gen_server).
--export([start_link/1]).
+-export([start_link/1, walk/2]).
 -export([init/1, code_change/3, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 -define (TIMEOUT, 1000*60*30). % 30 mins
@@ -29,7 +34,12 @@ handle_call(_Request, _From, State) ->
 %% ===================================================================================== %%
 
 handle_info(timeout, RootPath) ->
-    walk(RootPath),
+    ewalker_writer:begin_walk(RootPath),
+    walk(RootPath, fun(File) ->
+        ewalker_writer:visit(RootPath, File)
+    end),
+    ewalker_writer:end_walk(RootPath),
+    
     {noreply, RootPath, ?TIMEOUT};
     
 handle_info(_Message, State) ->
@@ -46,23 +56,26 @@ code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
         
 %% ===================================================================================== %%
-walk(Root) ->
-    io:format("Visiting " ++ Root ++ "~n"),
-    case walk([Root], []) of
-        {ok, []} ->
-            {ok, []};
+
+walk([], _Fun) ->
+    ok;
+    
+% Call the Fun for every file in the given list of folders
+walk([Path|Stack], Fun) when is_list(Path) and is_list(Stack) ->
+    ShouldVisit = Fun(Path),
+    
+    case filelib:is_dir(Path) andalso not(ShouldVisit =:= false) of
+        true ->
+            Files = filelib:wildcard(Path ++ "/*"),
+            NewStack = Stack ++ Files,
+            walk(NewStack, Fun);
+        false ->
+            walk(Stack, Fun)
+    end;
             
-        {ok, Files} ->
-            ok = ewalker_writer:seen(Root, Files),
-            {ok, Files};
-        {error, Message} ->
-            erlang:error(Message)
-    end.
     
-walk([], ResultFiles) ->
-    {ok, ResultFiles};
-    
-walk([ToVisit|Rest], ResultFiles) ->
-    Files = filelib:wildcard(ToVisit ++ "/*"),
-    walk(Rest ++ lists:filter(fun(X) -> filelib:is_dir(X) end, Files), ResultFiles ++ Files).
+
+% initial Fallback case (Called with just a string)
+walk(Path, Fun) ->
+    walk([Path], Fun).
     

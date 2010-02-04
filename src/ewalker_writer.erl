@@ -1,7 +1,7 @@
 -module(ewalker_writer).
 
 -behaviour(gen_server).
--export([start_link/3, seen/2]).
+-export([start_link/3, begin_walk/1, end_walk/1, visit/2]).
 -export([init/1, code_change/3, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 %%%
@@ -9,56 +9,52 @@
 % to disc.
 %
 -define(TIMEOUT, 5000).
--record(state, {atom, links, filename}).
+-record(state, {atom, files, links, filename}).
 %
 %% ===================================================================================== %%
 start_link(Name, Links, Filename) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Name, Links, Filename], []).
 
-seen(Root, Files) ->
-    gen_server:cast(?MODULE, {seen, Root, Files}).
+begin_walk(Root) ->
+    gen_server:cast(?MODULE, {begin_walk, Root}).
+
+visit(Root, File) ->
+    gen_server:cast(?MODULE, {visit, Root, File}).
     
+end_walk(Root) ->
+    gen_server:cast(?MODULE, {end_walk, Root}).
+
+
 %% ===================================================================================== %%
 
 init([Name, Links, Filename]) ->
     io:format("writer init~n"),
-    {ok, #state{atom=atom:new(Name), links=Links, filename=Filename}}.
+    {ok, #state{atom=atom:new(Name), files=[], links=Links, filename=Filename}}.
 
 %% ===================================================================================== %%
-
-handle_cast({seen, _Root, Files}, State) ->
+handle_cast({begin_walk, NewRoot}, State) ->
+    % Filter out all previous entries for the given path
+    NewFiles = lists:filter (
+        fun(_Entry = {Root, _File}) ->
+            not(Root =:= NewRoot)
+        end,
+        State#state.files
+    ),
+    {noreply, State#state{files=NewFiles}};
     
-    % Filter to only show files (filtered are mac application folders and hidden files)
-    FilteredFiles = lists:filter(
-        fun(File) ->
-            Eles = string:tokens(File, "/"),
-            
-            case lists:any(
-                fun(X) ->
-                    ".app" =:= string:right(X, 4) orelse
-                    "." =:= string:left(X,1) 
-                end,
-                Eles
-            ) of
-                true -> false;
-                _ -> filelib:is_regular(File)
-            end
-        end,
-        Files
-    ),
-    NewAtom = lists:foldl(
-        fun(File, Atom) ->
-            atom:add_file(
-                File,
-                replace_links(File, State#state.links),
-                Atom
-            )
-        end,
-        State#state.atom,
-        FilteredFiles
-    ),
-    {noreply, State#state{atom=NewAtom}, ?TIMEOUT}. % raise a 'timeout' after some time
-
+% init a timeout
+handle_cast({end_walk, _NewRoot}, State) ->
+    {noreply, State, ?TIMEOUT};
+    
+handle_cast({visit, Root, File}, State) ->
+    NewFiles = case accept_file(File) of
+        true ->
+            State#state.files ++ [{Root, File}];
+        _ ->
+            State#state.files
+    end,
+    {noreply, State#state{files=NewFiles}}.
+    
 %% ===================================================================================== %%
 
 handle_call(_Request, _From, State) ->
@@ -67,8 +63,20 @@ handle_call(_Request, _From, State) ->
 %% ===================================================================================== %%
 
 handle_info(timeout, State) ->
-    ok = dump(State#state.atom, State#state.filename),
-    {noreply, State#state{atom=atom:clear_items(State#state.atom)}};
+    Atom = lists:foldl(
+        fun({RootPath, File}, Atom) ->
+            atom:add_file(
+                File,
+                replace_links(File, State#state.links),
+                Atom            
+            )
+        end,
+        State#state.atom,
+        State#state.files
+    ),
+    
+    ok = dump(Atom, State#state.filename),
+    {noreply, State};
     
 handle_info(Message, State) ->
     io:format(Message),
@@ -86,7 +94,23 @@ code_change(_OldVsn, State, _Extra) ->
         
         
 %% ===================================================================================== %%
+accept_file(File) ->
+    Eles = string:tokens(File, "/"),
+            
+    case lists:any(
+        fun(X) ->
+            ".app" =:= string:right(X, 4) orelse
+            "." =:= string:left(X,1)  orelse
+            "Thumbs.db" =:= X
+        end,
+        Eles
+    ) of
+        true -> false;
+        _ -> filelib:is_regular(File)
+    end.
+    
 replace_links(Path, []) ->
+    
     Path;
 replace_links(Path, [{Url, Folder}|Mappings]) ->
     PathPrefix = string:left(Path, length(Folder)),

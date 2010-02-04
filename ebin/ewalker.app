@@ -22,7 +22,7 @@
     {folders, []},
     {name, "Files"},
     {mapping, [
-                 {"file:///", "/"},
+                 {"http://localhost/~zeisss/", "/Users/zeisss/Sites/"},
                  {"http://moon.localdomain/dav/", "/public/"}
               ]}
     
