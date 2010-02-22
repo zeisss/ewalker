@@ -17,8 +17,9 @@ die "Usage: #{__FILE__} <path>" unless ARGV.size == 1
 fsevents_cb = proc do |stream, ctx, numEvents, paths, marks, eventIDs|
   paths.regard_as('*')
   numEvents.times do |n|
-    puts "Event on path `#{paths[n]}' ID `#{eventIDs[n]}'"
-    $stderr.puts paths[n]
+#    puts "Event on path `#{paths[n]}' ID `#{eventIDs[n]}'"
+#   $stderr.puts "bla"
+    puts paths[n]
   end
 end
 

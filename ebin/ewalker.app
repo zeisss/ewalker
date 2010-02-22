@@ -24,7 +24,8 @@
     {mapping, [
                  {"http://localhost/~zeisss/", "/Users/zeisss/Sites/"},
                  {"http://moon.localdomain/dav/", "/public/"}
-              ]}
+              ]},
+    {hoptoad_apikey, undefined}
     
   ]}
  ]}.
