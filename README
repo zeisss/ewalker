@@ -1,0 +1,19 @@
+EWalker
+-------
+
+This a erlang application regularly reading the configured folders and
+generating an atom feed. The feed contains all found files with a link
+to the file.
+
+
+Configuration (Example)
+1. Configure your webserver to serve your data folder /public as http://localhost/public
+2. Configure the ewalker.config file and replace the paths and the mappings  
+3. Start the application:
+    
+   $ erl -boot start_sasl -pa ebin/ -s ewalker -config ewalker
+
+
+Hoptoad integration:
+If you replace the 'undefined_in_appfile' atom in the config with your apikey (enclosed by double quotes),
+the startup logic starts the erlhoptoad application, which sends errors to HopToad.
