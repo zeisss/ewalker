@@ -7,8 +7,8 @@ to the file.
 
 
 Configuration (Example)
-1. Configure your webserver to serve your data folder /public as http://localhost/public
-2. Configure the ewalker.config file and replace the paths and the mappings  
+1. Configure your webserver to serve your data folder, e.g. /public as http://localhost/public
+2. Configure the ewalker.config file and replace the paths and the mappings as needed  
 3. Start the application:
     
    $ erl -boot start_sasl -pa ebin/ -s ewalker -config ewalker
