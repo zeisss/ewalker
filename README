@@ -1,14 +1,18 @@
 EWalker
 -------
 
-This a erlang application regularly reading the configured folders and
-generating an atom feed. The feed contains all found files with a link
+This erlang application regularly reads the configured folders and
+generats an atom feed. The feed contains all found files with a link
 to the file.
+Through this, Clients using this feed will be notified about new files
+and modifications in the folders. The main use-case is to watch network-
+shared folders for media data, e.g. Pictures or Videos.
 
 
 Configuration (Example)
 1. Configure your webserver to serve your data folder, e.g. /public as http://localhost/public
 2. Configure the ewalker.config file and replace the paths and the mappings as needed  
+   The configuration file does not support environment variables.
 3. Start the application:
     
    $ erl -boot start_sasl -pa ebin/ -s ewalker -config ewalker
